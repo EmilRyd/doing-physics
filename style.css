@@ -1,0 +1,286 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 300;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.main-content {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+/* Controls Panel */
+.controls-panel {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    min-width: 300px;
+    flex-shrink: 0;
+}
+
+.controls-panel h2 {
+    margin-bottom: 25px;
+    color: #333;
+    font-weight: 500;
+    text-align: center;
+}
+
+.parameter {
+    margin-bottom: 25px;
+}
+
+.parameter label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+}
+
+.parameter input[type="range"] {
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 8px;
+}
+
+.parameter input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.parameter input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.parameter .value {
+    display: inline-block;
+    background: #f0f0f0;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: 500;
+    color: #333;
+    min-width: 60px;
+    text-align: center;
+}
+
+.start-btn, .reset-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.start-btn {
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+}
+
+.reset-btn {
+    background: linear-gradient(45deg, #f44336, #da190b);
+    color: white;
+}
+
+.reset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+}
+
+/* Simulation Container */
+.simulation-container {
+    display: flex;
+    align-items: stretch;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    overflow: hidden;
+    flex-grow: 1;
+    height: 70vh; /* keep the whole display within the viewport */
+}
+
+.height-scale {
+    width: 60px;
+    background: #f8f9fa;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0;
+    z-index: 10;
+}
+
+.height-tick {
+    position: absolute;
+    width: calc(100% - 20px);
+    height: 1px;
+    border-top: 1px solid #ccc;
+    left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    z-index: 20;
+}
+
+.height-label {
+    position: absolute;
+    right: 15px;
+    top: -8px;
+    font-size: 12px;
+    color: #666;
+    background: #f8f9fa;
+    padding: 2px 4px;
+}
+
+.left-scale .height-label {
+    right: auto;
+    left: 15px;
+}
+
+.simulation-area {
+    flex-grow: 1;
+    position: relative;
+    background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+#simulation-canvas {
+    flex: 1 1 auto;
+    display: block;
+    background: transparent;
+    max-height: calc(100% - 40px); /* Don't overlap the ground */
+}
+
+.ground {
+    height: 40px;
+    background: linear-gradient(to bottom, #8B4513, #654321);
+    position: relative;
+    flex-shrink: 0; /* ensure ground remains visible and not overlapped by canvas */
+    z-index: 5;
+}
+
+.ground::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px; /* make the grass strip slightly thicker for clear alignment */
+    background: #228B22;
+}
+
+/* Info Panel removed */
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .controls-panel, .info-panel {
+        min-width: auto;
+    }
+    
+    .simulation-container {
+        height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .simulation-container {
+        height: 400px;
+    }
+    
+    .controls-panel, .info-panel {
+        padding: 20px;
+    }
+}
+
+/* Animation classes */
+.ball {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5a52);
+    border-radius: 50%;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+    z-index: 10;
+    transition: none;
+}
+
+.podium {
+    position: absolute;
+    background: linear-gradient(to bottom, #D3D3D3, #A9A9A9);
+    border: 2px solid #888;
+    border-radius: 5px 5px 0 0;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    z-index: 5;
+}
