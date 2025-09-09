@@ -75,6 +75,8 @@ class ProjectileMotionSimulator {
         this.massSlider.addEventListener('input', (e) => {
             this.mass = parseFloat(e.target.value);
             this.massValue.textContent = this.mass.toFixed(1);
+            this.calculateMaxHeight();
+            this.updateDisplay();
         });
         
         this.heightSlider.addEventListener('input', (e) => {
@@ -114,7 +116,7 @@ class ProjectileMotionSimulator {
     }
     
     calculateMaxHeight() {
-        // With variable gravity g(h) = 7/(h + 5), we need to simulate to find max height
+        // With variable gravity g(h, m) = 7m/(h + 5), we need to simulate to find max height
         // Simulate until velocity becomes zero (peak height)
         
         let time = 0;
@@ -260,7 +262,7 @@ class ProjectileMotionSimulator {
     }
     
     calculatePosition(time) {
-        // Variable gravity physics: g(h) = 7/(h + 5)
+        // Variable gravity physics: g(h, m) = 7m/(h + 5)
         // This requires numerical integration since acceleration depends on position
         
         if (time === 0) {
@@ -276,8 +278,8 @@ class ProjectileMotionSimulator {
         let currentVelocity = this.initialVelocity;
         
         for (let t = 0; t < time; t += dt) {
-            // Calculate gravity at current height: g(h) = 7/(h + 5)
-            const currentGravity = 7 / (currentHeight + 5);
+            // Calculate gravity at current height and mass: g(h, m) = 7m/(h + 5)
+            const currentGravity = (7 * this.mass) / (currentHeight + 5);
             
             // Update velocity: v = v - g*dt
             currentVelocity -= currentGravity * dt;
