@@ -24,8 +24,8 @@ class ProjectileMotionSimulator {
         this.flightTime = 0;
         
         // Visual scaling
-        this.pixelsPerMeter = 60; // pixels per meter (higher for clearer motion at low velocities)
-        this.maxDisplayHeight = 10; // maximum height to display in meters
+        this.pixelsPerMeter = 20; // pixels per meter (adjusted for 30m display)
+        this.maxDisplayHeight = 30; // maximum height to display in meters
         
         this.initializeElements();
         this.bindEvents();
@@ -54,7 +54,10 @@ class ProjectileMotionSimulator {
         this.startBtn = document.getElementById('start-simulation');
         this.resetBtn = document.getElementById('reset-simulation');
         
-        // Info displays removed
+        // Info displays
+        this.timeDisplay = document.getElementById('current-time');
+        this.heightDisplay = document.getElementById('current-height');
+        this.velocityDisplay = document.getElementById('current-velocity');
         
         // Simulation area
         this.simulationArea = document.querySelector('.simulation-area');
@@ -111,11 +114,43 @@ class ProjectileMotionSimulator {
     }
     
     calculateMaxHeight() {
-        // Calculate maximum height using kinematic equation: h_max = h_0 + v_0²/(2g)
-        this.maxHeight = this.initialHeight + (this.initialVelocity * this.initialVelocity) / (2 * this.gravity);
+        // With variable gravity g(h) = 7/(h + 5), we need to simulate to find max height
+        // Simulate until velocity becomes zero (peak height)
         
-        // Calculate time to return to starting height (podium top): t = 2*v_0/g
-        this.flightTime = this.initialVelocity > 0 ? (2 * this.initialVelocity) / this.gravity : 0;
+        let time = 0;
+        let maxHeight = this.initialHeight;
+        let lastVelocity = this.initialVelocity;
+        
+        // Simulate with small time steps to find when velocity becomes zero
+        const dt = 0.01; // 10ms steps for faster calculation
+        for (let t = 0; t < 100; t += dt) { // Max 100 seconds
+            const position = this.calculatePosition(t);
+            
+            if (position.velocity <= 0 && t > 0) {
+                // Found peak - velocity just became negative
+                maxHeight = Math.max(maxHeight, position.height);
+                break;
+            }
+            
+            maxHeight = Math.max(maxHeight, position.height);
+            lastVelocity = position.velocity;
+        }
+        
+        this.maxHeight = maxHeight;
+        
+        // Estimate flight time by simulating until ball returns to start height
+        this.flightTime = 0;
+        for (let t = 0; t < 200; t += 0.1) { // Max 200 seconds
+            const position = this.calculatePosition(t);
+            if (t > 0.1 && position.height <= this.initialHeight + 0.01) {
+                this.flightTime = t;
+                break;
+            }
+        }
+        
+        if (this.flightTime === 0) {
+            this.flightTime = 100; // Fallback
+        }
     }
     
     generateHeightTicks() {
@@ -225,15 +260,42 @@ class ProjectileMotionSimulator {
     }
     
     calculatePosition(time) {
-        // Kinematic equation: h(t) = h_0 + v_0*t - (1/2)*g*t²
-        const height = this.initialHeight + (this.initialVelocity * time) - (0.5 * this.gravity * time * time);
+        // Variable gravity physics: g(h) = 7/(h + 5)
+        // This requires numerical integration since acceleration depends on position
         
-        // Velocity equation: v(t) = v_0 - g*t
-        const velocity = this.initialVelocity - (this.gravity * time);
+        if (time === 0) {
+            return {
+                height: this.initialHeight,
+                velocity: this.initialVelocity
+            };
+        }
+        
+        // Use small time steps for numerical integration
+        const dt = 0.001; // 1ms time step
+        let currentHeight = this.initialHeight;
+        let currentVelocity = this.initialVelocity;
+        
+        for (let t = 0; t < time; t += dt) {
+            // Calculate gravity at current height: g(h) = 7/(h + 5)
+            const currentGravity = 7 / (currentHeight + 5);
+            
+            // Update velocity: v = v - g*dt
+            currentVelocity -= currentGravity * dt;
+            
+            // Update position: h = h + v*dt
+            currentHeight += currentVelocity * dt;
+            
+            // Don't go below ground
+            if (currentHeight <= 0) {
+                currentHeight = 0;
+                currentVelocity = 0;
+                break;
+            }
+        }
         
         return {
-            height: Math.max(0, height), // Don't go below ground
-            velocity: velocity
+            height: Math.max(0, currentHeight),
+            velocity: currentVelocity
         };
     }
     
@@ -321,7 +383,10 @@ class ProjectileMotionSimulator {
     }
     
     updateDisplay() {
-        // No displays to update - removed info panel
+        // Update current values display
+        this.timeDisplay.textContent = `${this.currentTime.toFixed(2)} s`;
+        this.heightDisplay.textContent = `${this.currentHeight.toFixed(2)} m`;
+        this.velocityDisplay.textContent = `${this.currentVelocity.toFixed(2)} m/s`;
     }
     
     resizeCanvas() {
