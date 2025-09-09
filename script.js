@@ -131,8 +131,8 @@ class ProjectileMotionSimulator {
         leftScale.innerHTML = '';
         rightScale.innerHTML = '';
         
-        // Generate ticks every 2 meters (from 0 at ground up to maxDisplayHeight)
-        for (let height = 0; height <= this.maxDisplayHeight; height += 2) {
+        // Generate ticks every 1 meter (from 0 at ground up to maxDisplayHeight)
+        for (let height = 0; height <= this.maxDisplayHeight; height += 1) {
             const leftTick = this.createHeightTick(height, 'left');
             const rightTick = this.createHeightTick(height, 'right');
             
