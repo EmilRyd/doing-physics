@@ -22,10 +22,14 @@ class ProjectileMotionSimulator {
         this.currentVelocity = 0;
         this.maxHeight = 0;
         this.flightTime = 0;
+        this.peakHeightReached = 0;
         
         // Visual scaling
-        this.pixelsPerMeter = 30; // pixels per meter (adjusted to maintain same visual size with 20m range)
-        this.maxDisplayHeight = 20; // maximum height to display in meters
+        this.pixelsPerMeter = 10; // pixels per meter (adjusted to maintain same visual size with 60m range)
+        this.maxDisplayHeight = 60; // maximum height to display in meters
+        
+        // Initialize peak height to initial height
+        this.peakHeightReached = this.initialHeight;
         
         this.initializeElements();
         this.bindEvents();
@@ -54,7 +58,8 @@ class ProjectileMotionSimulator {
         this.startBtn = document.getElementById('start-simulation');
         this.resetBtn = document.getElementById('reset-simulation');
         
-        // Info displays removed
+        // Peak height display
+        this.peakHeightValue = document.getElementById('peak-height-value');
         
         // Simulation area
         this.simulationArea = document.querySelector('.simulation-area');
@@ -78,6 +83,12 @@ class ProjectileMotionSimulator {
             this.initialHeight = parseFloat(e.target.value);
             this.heightValue.textContent = this.initialHeight.toFixed(1);
             this.calculateMaxHeight();
+            
+            // Update peak height to match initial height when not running
+            if (!this.isRunning) {
+                this.peakHeightReached = this.initialHeight;
+            }
+            
             this.updateDisplay();
             this.updatePodium();
             
@@ -131,8 +142,8 @@ class ProjectileMotionSimulator {
         leftScale.innerHTML = '';
         rightScale.innerHTML = '';
         
-        // Generate ticks every 1 meter (from 0 at ground up to maxDisplayHeight)
-        for (let height = 0; height <= this.maxDisplayHeight; height += 1) {
+        // Generate ticks every 2 meters (from 0 at ground up to maxDisplayHeight, only even numbers)
+        for (let height = 0; height <= this.maxDisplayHeight; height += 2) {
             const leftTick = this.createHeightTick(height, 'left');
             const rightTick = this.createHeightTick(height, 'right');
             
@@ -243,6 +254,7 @@ class ProjectileMotionSimulator {
         this.isRunning = true;
         this.startTime = performance.now();
         this.currentTime = 0;
+        this.peakHeightReached = this.initialHeight; // Start with initial height
         
         this.calculateMaxHeight();
         this.createBall();
@@ -262,6 +274,11 @@ class ProjectileMotionSimulator {
         const position = this.calculatePosition(this.currentTime);
         this.currentHeight = position.height;
         this.currentVelocity = position.velocity;
+        
+        // Track peak height reached (only update if current height is higher)
+        if (this.currentHeight > this.peakHeightReached) {
+            this.peakHeightReached = this.currentHeight;
+        }
         
         // Update ball position (using physics height during simulation)
         this.positionBallByBottomHeight(this.currentHeight);
@@ -309,6 +326,7 @@ class ProjectileMotionSimulator {
         this.currentTime = 0;
         this.currentHeight = this.initialHeight;
         this.currentVelocity = 0;
+        this.peakHeightReached = this.initialHeight; // Reset peak height to initial height
         
         // Reset ball position to current initial height (resting position)
         if (this.ball) {
@@ -321,7 +339,10 @@ class ProjectileMotionSimulator {
     }
     
     updateDisplay() {
-        // No displays to update - removed info panel
+        // Update peak height display
+        if (this.peakHeightValue) {
+            this.peakHeightValue.textContent = this.peakHeightReached.toFixed(1);
+        }
     }
     
     resizeCanvas() {
