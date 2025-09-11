@@ -24,7 +24,7 @@ class ProjectileMotionSimulator {
         this.flightTime = 0;
         
         // Visual scaling
-        this.pixelsPerMeter = 30; // pixels per meter (adjusted to maintain same total size with 20m range)
+        this.pixelsPerMeter = 30; // pixels per meter (adjusted to maintain same visual size with 20m range)
         this.maxDisplayHeight = 20; // maximum height to display in meters
         
         this.initializeElements();
