@@ -27,4 +27,4 @@ echo ""
 echo "🎯 Attempting to use custom subdomain: doingphysics.ngrok.app"
 echo "Note: Custom subdomains require a paid ngrok plan"
 echo ""
-ngrok http 8000 --subdomain=doingphysics --log stdout
+ngrok http 8000 --subdomain=doingphysics-fleeb --log stdout
