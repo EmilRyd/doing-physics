@@ -14,52 +14,63 @@ class ProjectileMotionSimulator {
         // Current parameters (match slider defaults)
         this.initialVelocity = 2.5; // m/s
         this.mass = 1; // kg (note: mass doesn't affect motion in vacuum)
-        this.initialHeight = 2.5; // m
+        this.initialHeight = 0; // m - always start from ground
+        this.launchAngle = 45; // degrees
         
         // Current state
         this.currentTime = 0;
         this.currentHeight = 0;
-        this.currentVelocity = 0;
+        this.currentX = 0;
+        this.currentVelocityX = 0;
+        this.currentVelocityY = 0;
         this.maxHeight = 0;
         this.flightTime = 0;
-        this.peakHeightReached = 0;
         
         // Visual scaling
-        this.pixelsPerMeter = 10; // pixels per meter (adjusted to maintain same visual size with 60m range)
-        this.maxDisplayHeight = 60; // maximum height to display in meters
+        this.maxDisplayHeight = 20; // maximum height to display in meters
+        this.pixelsPerMeter = 10; // will be calculated dynamically based on container height
         
-        // Initialize peak height to initial height
-        this.peakHeightReached = this.initialHeight;
+        // Starting position offset from left edge
+        this.startXOffset = 1; // meters from left edge
+        
+        // Horizontal display range
+        this.horizontalDisplayRange = 30; // meters to show across full width
         
         this.initializeElements();
         this.bindEvents();
         this.updateDisplay();
-        this.generateHeightTicks();
-
-        // If ended at podium, ensure resting position visually matches podium top
-        if (!this.isRunning) {
-            this.positionBall(this.initialHeight, false);
+        
+        // Initialize angle display
+        if (this.angleValue) {
+            this.angleValue.textContent = this.launchAngle.toFixed(0) + '°';
         }
-        this.generateHeightTicks();
+
+        // Delay initial setup to ensure DOM is fully rendered
+        setTimeout(() => {
+            this.calculatePixelsPerMeter();
+            this.generateHeightTicks();
+            this.generateXAxisTicks();
+            
+            if (!this.isRunning) {
+                this.createBall();
+            }
+        }, 50);
     }
     
     initializeElements() {
         // Sliders
         this.velocitySlider = document.getElementById('initial-velocity');
         this.massSlider = document.getElementById('mass');
-        this.heightSlider = document.getElementById('initial-height');
+        this.angleSlider = document.getElementById('launch-angle');
         
         // Value displays
         this.velocityValue = document.getElementById('velocity-value');
         this.massValue = document.getElementById('mass-value');
-        this.heightValue = document.getElementById('height-value');
+        this.angleValue = document.getElementById('angle-value');
         
         // Buttons
         this.startBtn = document.getElementById('start-simulation');
         this.resetBtn = document.getElementById('reset-simulation');
-        
-        // Peak height display
-        this.peakHeightValue = document.getElementById('peak-height-value');
         
         // Simulation area
         this.simulationArea = document.querySelector('.simulation-area');
@@ -72,6 +83,7 @@ class ProjectileMotionSimulator {
             this.velocityValue.textContent = this.initialVelocity.toFixed(1);
             this.calculateMaxHeight();
             this.updateDisplay();
+            this.generateXAxisTicks();
         });
         
         this.massSlider.addEventListener('input', (e) => {
@@ -79,28 +91,12 @@ class ProjectileMotionSimulator {
             this.massValue.textContent = this.mass.toFixed(1);
         });
         
-        this.heightSlider.addEventListener('input', (e) => {
-            this.initialHeight = parseFloat(e.target.value);
-            this.heightValue.textContent = this.initialHeight.toFixed(1);
+        this.angleSlider.addEventListener('input', (e) => {
+            this.launchAngle = parseFloat(e.target.value);
+            this.angleValue.textContent = this.launchAngle.toFixed(0) + '°';
             this.calculateMaxHeight();
-            
-            // Update peak height to match initial height when not running
-            if (!this.isRunning) {
-                this.peakHeightReached = this.initialHeight;
-            }
-            
             this.updateDisplay();
-            this.updatePodium();
-            
-            // Update ball position if it exists and simulation is not running
-            if (!this.isRunning) {
-                this.currentHeight = this.initialHeight;
-                if (this.ball) {
-                    this.positionBallOnPodium(this.initialHeight);
-                } else {
-                    this.createBall();
-                }
-            }
+            this.generateXAxisTicks();
         });
         
         // Button events
@@ -114,21 +110,65 @@ class ProjectileMotionSimulator {
             }
         });
         
-        // Initialize podium and ball
-        this.createPodium();
-        this.updatePodium();
+        // Initialize ball at ground level
         this.createBall();
         this.currentHeight = this.initialHeight;
+        this.generateXAxisTicks();
     }
     
     calculateMaxHeight() {
-        // Calculate maximum height using kinematic equation: h_max = h_0 + v_0²/(2g)
-        this.maxHeight = this.initialHeight + (this.initialVelocity * this.initialVelocity) / (2 * this.gravity);
+        // Convert angle to radians
+        const angleRad = (this.launchAngle * Math.PI) / 180;
         
-        // Calculate time to return to starting height (podium top): t = 2*v_0/g
-        this.flightTime = this.initialVelocity > 0 ? (2 * this.initialVelocity) / this.gravity : 0;
+        // Calculate vertical velocity component
+        const v0y = this.initialVelocity * Math.sin(angleRad);
+        
+        // Calculate maximum height using kinematic equation: h_max = h_0 + v_0y²/(2g)
+        this.maxHeight = this.initialHeight + (v0y * v0y) / (2 * this.gravity);
+        
+        // Calculate time of flight - simplified for ground-level launches
+        if (this.initialHeight === 0) {
+            // For ground-level launches: t = 2*v_0y/g
+            this.flightTime = Math.abs(v0y) > 0.001 ? (2 * Math.abs(v0y)) / this.gravity : 0.1;
+        } else {
+            // For elevated launches, use quadratic formula
+            // h(t) = h_0 + v_0y*t - (1/2)*g*t² = 0
+            const a = -0.5 * this.gravity;
+            const b = v0y;
+            const c = this.initialHeight;
+            
+            const discriminant = b * b - 4 * a * c;
+            if (discriminant >= 0) {
+                const t1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+                const t2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+                this.flightTime = Math.max(t1, t2);
+            } else {
+                this.flightTime = 0.1; // Minimum flight time
+            }
+        }
+        
+        // Ensure minimum flight time for very low velocities
+        this.flightTime = Math.max(this.flightTime, 0.1);
     }
     
+    calculatePixelsPerMeter() {
+        // Calculate pixels per meter to fill the full display height
+        const containerHeight = this.simulationArea.clientHeight;
+        const groundHeight = 40;
+        const availableHeight = containerHeight - groundHeight;
+        
+        // Ensure we have valid dimensions before calculating
+        if (availableHeight > 0 && this.maxDisplayHeight > 0) {
+            this.pixelsPerMeter = availableHeight / this.maxDisplayHeight;
+        } else {
+            // Fallback to default scaling if dimensions aren't ready
+            this.pixelsPerMeter = 20; // 20 pixels per meter as fallback
+        }
+        
+        // Ensure minimum scaling
+        this.pixelsPerMeter = Math.max(this.pixelsPerMeter, 5);
+    }
+
     generateHeightTicks() {
         const leftScale = document.querySelector('.left-scale');
         const rightScale = document.querySelector('.right-scale');
@@ -137,6 +177,9 @@ class ProjectileMotionSimulator {
             console.error('Height scale elements not found!');
             return;
         }
+        
+        // Calculate proper scaling first
+        this.calculatePixelsPerMeter();
         
         // Clear existing ticks
         leftScale.innerHTML = '';
@@ -174,18 +217,49 @@ class ProjectileMotionSimulator {
         return tick;
     }
     
-    createPodium() {
-        this.podium = document.createElement('div');
-        this.podium.className = 'podium';
-        this.simulationArea.appendChild(this.podium);
-    }
-    
-    updatePodium() {
-        if (this.podium) {
-            const podiumHeight = this.initialHeight * this.pixelsPerMeter;
-            this.podium.style.height = `${podiumHeight}px`;
+    generateXAxisTicks() {
+        const xAxisScale = document.querySelector('.x-axis-scale');
+        
+        if (!xAxisScale) {
+            console.error('X-axis scale element not found!');
+            return;
+        }
+        
+        // Clear existing ticks
+        xAxisScale.innerHTML = '';
+        
+        // Calculate how many meters to show across the full width
+        const areaWidth = this.simulationArea.clientWidth;
+        
+        // Generate ticks every 1 meter
+        for (let distance = 0; distance <= this.horizontalDisplayRange; distance += 1) {
+            const tick = this.createXTick(distance, areaWidth, this.horizontalDisplayRange);
+            xAxisScale.appendChild(tick);
         }
     }
+    
+    createXTick(distance, areaWidth, desiredRange) {
+        const tickContainer = document.createElement('div');
+        
+        const tick = document.createElement('div');
+        tick.className = 'x-tick';
+        
+        const label = document.createElement('span');
+        label.className = 'x-tick-label';
+        label.textContent = `${distance}m`;
+        
+        tickContainer.appendChild(tick);
+        tickContainer.appendChild(label);
+        
+        // Position the tick to span the full width evenly
+        const tickPosition = (distance / desiredRange) * areaWidth;
+        
+        tickContainer.style.position = 'absolute';
+        tickContainer.style.left = `${tickPosition}px`;
+        
+        return tickContainer;
+    }
+    
     
     createBall() {
         // Remove existing ball if any
@@ -199,7 +273,7 @@ class ProjectileMotionSimulator {
         this.simulationArea.appendChild(this.ball);
         
         // Position ball at starting position
-        this.positionBallOnPodium(this.initialHeight);
+        this.positionBallAtStart();
     }
     
     positionBallByBottomHeight(height) {
@@ -213,48 +287,83 @@ class ProjectileMotionSimulator {
         this.ball.style.left = `${ballX}px`;
         this.ball.style.top = `${ballY}px`;
     }
-
-    positionBallOnPodium(height) {
+    
+    positionBallInFlight(x, height) {
         if (!this.ball) return;
         const containerHeight = this.simulationArea.clientHeight;
         const groundHeight = 40;
         const ballSize = 20;
         const areaWidth = this.simulationArea.clientWidth;
-        let podiumTopY;
-        if (this.podium && this.simulationArea) {
-            const containerRect = this.simulationArea.getBoundingClientRect();
-            const podiumRect = this.podium.getBoundingClientRect();
-            podiumTopY = podiumRect.top - containerRect.top;
-        } else {
-            const podiumHeight = height * this.pixelsPerMeter;
-            podiumTopY = (containerHeight - groundHeight) - podiumHeight;
+        
+        // Ensure we have valid dimensions
+        if (containerHeight <= 0 || areaWidth <= 0) {
+            console.warn('Invalid container dimensions during ball positioning');
+            return;
         }
-        const ballX = (areaWidth / 2) - (ballSize / 2);
-        const ballY = podiumTopY - ballSize;
+        
+        // Convert physics coordinates to screen coordinates
+        // Use horizontal display scaling for x position
+        const horizontalPixelsPerMeter = areaWidth / this.horizontalDisplayRange;
+        const ballX = (this.startXOffset + x) * horizontalPixelsPerMeter - (ballSize / 2);
+        const ballY = (containerHeight - groundHeight) - (height * this.pixelsPerMeter) - ballSize;
+        
+        this.ball.style.left = `${ballX}px`;
+        this.ball.style.top = `${ballY}px`;
+    }
+
+    positionBallAtStart() {
+        if (!this.ball) return;
+        const containerHeight = this.simulationArea.clientHeight;
+        const groundHeight = 40;
+        const ballSize = 20;
+        const areaWidth = this.simulationArea.clientWidth;
+        
+        // Position ball at starting position on ground
+        const horizontalPixelsPerMeter = areaWidth / this.horizontalDisplayRange;
+        const ballX = this.startXOffset * horizontalPixelsPerMeter - (ballSize / 2);
+        const ballY = (containerHeight - groundHeight) - ballSize;
+        
         this.ball.style.left = `${ballX}px`;
         this.ball.style.top = `${ballY}px`;
     }
     
     calculatePosition(time) {
-        // Kinematic equation: h(t) = h_0 + v_0*t - (1/2)*g*t²
-        const height = this.initialHeight + (this.initialVelocity * time) - (0.5 * this.gravity * time * time);
+        // Convert angle to radians
+        const angleRad = (this.launchAngle * Math.PI) / 180;
         
-        // Velocity equation: v(t) = v_0 - g*t
-        const velocity = this.initialVelocity - (this.gravity * time);
+        // Calculate initial velocity components
+        const v0x = this.initialVelocity * Math.cos(angleRad);
+        const v0y = this.initialVelocity * Math.sin(angleRad);
+        
+        // Kinematic equations for projectile motion
+        // x(t) = v_0x * t
+        const x = v0x * time;
+        
+        // y(t) = h_0 + v_0y*t - (1/2)*g*t²
+        const height = this.initialHeight + (v0y * time) - (0.5 * this.gravity * time * time);
+        
+        // Velocity components: vx(t) = v_0x (constant), vy(t) = v_0y - g*t
+        const velocityX = v0x;
+        const velocityY = v0y - (this.gravity * time);
         
         return {
+            x: x,
             height: Math.max(0, height), // Don't go below ground
-            velocity: velocity
+            velocityX: velocityX,
+            velocityY: velocityY
         };
     }
     
     startSimulation() {
         if (this.isRunning) return;
         
+        // Ensure proper scaling is calculated before starting
+        this.calculatePixelsPerMeter();
+        
         this.isRunning = true;
         this.startTime = performance.now();
         this.currentTime = 0;
-        this.peakHeightReached = this.initialHeight; // Start with initial height
+        this.currentX = 0;
         
         this.calculateMaxHeight();
         this.createBall();
@@ -273,28 +382,25 @@ class ProjectileMotionSimulator {
         
         const position = this.calculatePosition(this.currentTime);
         this.currentHeight = position.height;
-        this.currentVelocity = position.velocity;
+        this.currentX = position.x;
+        this.currentVelocityX = position.velocityX;
+        this.currentVelocityY = position.velocityY;
         
-        // Track peak height reached (only update if current height is higher)
-        if (this.currentHeight > this.peakHeightReached) {
-            this.peakHeightReached = this.currentHeight;
-        }
-        
-        // Update ball position (using physics height during simulation)
-        this.positionBallByBottomHeight(this.currentHeight);
+        // Update ball position (using physics position during simulation)
+        this.positionBallInFlight(this.currentX, this.currentHeight);
         
         // Update displays
         this.updateDisplay();
         
-        // Check if simulation should end when the ball returns to podium height
-        // End if time exceeded computed flight time or if height fell to/below initialHeight (with small tolerance)
+        // Check if simulation should end when the ball hits the ground
+        // End if time exceeded computed flight time or if height fell to/below ground (with small tolerance)
         const epsilon = 0.01; // meters tolerance
         const timeEpsilon = 0.001; // seconds
-        const returnedToStartHeight = (this.currentTime > timeEpsilon) && (this.currentHeight <= this.initialHeight + epsilon) && (this.currentVelocity <= 0);
-        if (this.currentTime >= this.flightTime || returnedToStartHeight) {
-            // Snap to podium height to avoid sinking
-            this.currentHeight = this.initialHeight;
-            this.positionBallByBottomHeight(this.currentHeight);
+        const hitGround = (this.currentTime > timeEpsilon) && (this.currentHeight <= epsilon);
+        if (this.currentTime >= this.flightTime || hitGround) {
+            // Snap to ground level to avoid sinking
+            this.currentHeight = 0;
+            this.positionBallInFlight(this.currentX, this.currentHeight);
             this.endSimulation();
             return;
         }
@@ -313,9 +419,10 @@ class ProjectileMotionSimulator {
         }
         
         // Position ball at ground level (resting position)
-        this.positionBallOnPodium(0);
+        this.positionBallInFlight(this.currentX, 0);
         this.currentHeight = 0;
-        this.currentVelocity = 0;
+        this.currentVelocityX = 0;
+        this.currentVelocityY = 0;
         this.updateDisplay();
     }
     
@@ -325,12 +432,13 @@ class ProjectileMotionSimulator {
         // Reset time and position
         this.currentTime = 0;
         this.currentHeight = this.initialHeight;
-        this.currentVelocity = 0;
-        this.peakHeightReached = this.initialHeight; // Reset peak height to initial height
+        this.currentX = 0;
+        this.currentVelocityX = 0;
+        this.currentVelocityY = 0;
         
-        // Reset ball position to current initial height (resting position)
+        // Reset ball position to starting position
         if (this.ball) {
-            this.positionBallOnPodium(this.initialHeight);
+            this.positionBallAtStart();
         } else {
             this.createBall();
         }
@@ -339,10 +447,7 @@ class ProjectileMotionSimulator {
     }
     
     updateDisplay() {
-        // Update peak height display
-        if (this.peakHeightValue) {
-            this.peakHeightValue.textContent = this.peakHeightReached.toFixed(1);
-        }
+        // Display updates can be added here if needed
     }
     
     resizeCanvas() {
@@ -350,16 +455,17 @@ class ProjectileMotionSimulator {
         this.canvas.width = container.clientWidth;
         this.canvas.height = container.clientHeight - 40; // Leave space for ground
         
-        // Regenerate height ticks with new canvas dimensions
+        // Recalculate scaling for new dimensions and regenerate ticks
+        this.calculatePixelsPerMeter();
         this.generateHeightTicks();
-        this.updatePodium();
+        this.generateXAxisTicks();
         
         if (this.ball) {
             const usePhysics = this.isRunning;
             if (usePhysics) {
-                this.positionBallByBottomHeight(this.currentHeight || this.initialHeight);
+                this.positionBallInFlight(this.currentX || 0, this.currentHeight || this.initialHeight);
             } else {
-                this.positionBallOnPodium(this.currentHeight || this.initialHeight);
+                this.positionBallAtStart();
             }
         }
     }
