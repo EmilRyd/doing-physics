@@ -15,7 +15,7 @@ class ProjectileMotionSimulator {
         this.initialVelocity = 2.5; // m/s
         this.mass = 1; // kg (note: mass doesn't affect motion in vacuum)
         this.initialHeight = 0; // m - always start from ground
-        this.launchAngle = 45; // degrees
+        this.launchAngle = 25; // degrees - within allowed range
         
         // Current state
         this.currentTime = 0;
@@ -27,14 +27,14 @@ class ProjectileMotionSimulator {
         this.flightTime = 0;
         
         // Visual scaling
-        this.maxDisplayHeight = 20; // maximum height to display in meters
+        this.maxDisplayHeight = 15; // maximum height to display in meters
         this.pixelsPerMeter = 10; // will be calculated dynamically based on container height
         
         // Starting position offset from left edge
         this.startXOffset = 1; // meters from left edge
         
         // Horizontal display range
-        this.horizontalDisplayRange = 30; // meters to show across full width
+        this.horizontalDisplayRange = 25; // meters to show across full width
         
         this.initializeElements();
         this.bindEvents();
@@ -92,7 +92,25 @@ class ProjectileMotionSimulator {
         });
         
         this.angleSlider.addEventListener('input', (e) => {
-            this.launchAngle = parseFloat(e.target.value);
+            let requestedAngle = parseFloat(e.target.value);
+            
+            // Restrict to allowed ranges: 0-25° and 65-75°
+            if (requestedAngle > 25 && requestedAngle < 65) {
+                // Snap to closest allowed value for forbidden middle range
+                if (requestedAngle <= 45) {
+                    requestedAngle = 25; // Snap to upper bound of first range
+                } else {
+                    requestedAngle = 65; // Snap to lower bound of second range
+                }
+                // Update the slider position to reflect the snapped value
+                e.target.value = requestedAngle;
+            } else if (requestedAngle > 75) {
+                // Cap at maximum allowed angle
+                requestedAngle = 75;
+                e.target.value = requestedAngle;
+            }
+            
+            this.launchAngle = requestedAngle;
             this.angleValue.textContent = this.launchAngle.toFixed(0) + '°';
             this.calculateMaxHeight();
             this.updateDisplay();
@@ -185,8 +203,8 @@ class ProjectileMotionSimulator {
         leftScale.innerHTML = '';
         rightScale.innerHTML = '';
         
-        // Generate ticks every 2 meters (from 0 at ground up to maxDisplayHeight, only even numbers)
-        for (let height = 0; height <= this.maxDisplayHeight; height += 2) {
+        // Generate ticks every 1 meter (from 0 at ground up to maxDisplayHeight)
+        for (let height = 0; height <= this.maxDisplayHeight; height += 1) {
             const leftTick = this.createHeightTick(height, 'left');
             const rightTick = this.createHeightTick(height, 'right');
             
@@ -199,11 +217,13 @@ class ProjectileMotionSimulator {
         const tick = document.createElement('div');
         tick.className = 'height-tick';
         
-        const label = document.createElement('span');
-        label.className = 'height-label';
-        label.textContent = `${height}m`;
-        
-        tick.appendChild(label);
+        // Only add label if it's not the maximum height (20m)
+        if (height < this.maxDisplayHeight) {
+            const label = document.createElement('span');
+            label.className = 'height-label';
+            label.textContent = `${height}m`;
+            tick.appendChild(label);
+        }
         
         // Position the tick based on height relative to the full simulation area
         // Use the simulation area's clientHeight (canvas + ground) so 0m aligns with ground top
@@ -231,7 +251,7 @@ class ProjectileMotionSimulator {
         // Calculate how many meters to show across the full width
         const areaWidth = this.simulationArea.clientWidth;
         
-        // Generate ticks every 1 meter
+        // Generate ticks every 1 meter, starting from the launch position as 0m
         for (let distance = 0; distance <= this.horizontalDisplayRange; distance += 1) {
             const tick = this.createXTick(distance, areaWidth, this.horizontalDisplayRange);
             xAxisScale.appendChild(tick);
@@ -244,12 +264,19 @@ class ProjectileMotionSimulator {
         const tick = document.createElement('div');
         tick.className = 'x-tick';
         
-        const label = document.createElement('span');
-        label.className = 'x-tick-label';
-        label.textContent = `${distance}m`;
+        // Only add label if it's not the maximum distance (25m)
+        if (distance < this.horizontalDisplayRange) {
+            const label = document.createElement('span');
+            label.className = 'x-tick-label';
+            // Adjust label so that the launch position (at startXOffset) shows as 0m
+            const labelDistance = distance - this.startXOffset;
+            if (labelDistance >= 0) {
+                label.textContent = `${labelDistance}m`;
+                tickContainer.appendChild(label);
+            }
+        }
         
         tickContainer.appendChild(tick);
-        tickContainer.appendChild(label);
         
         // Position the tick to span the full width evenly
         const tickPosition = (distance / desiredRange) * areaWidth;
