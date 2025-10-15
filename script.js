@@ -12,10 +12,10 @@ class ProjectileMotionSimulator {
         this.startTime = 0;
         
         // Current parameters (match slider defaults)
-        this.initialVelocity = 2.5; // m/s
+        this.initialVelocity = 25; // m/s
         this.mass = 1; // kg (note: mass doesn't affect motion in vacuum)
         this.initialHeight = 0; // m - always start from ground
-        this.launchAngle = 25; // degrees - within allowed range
+        this.launchAngle = 45; // degrees
         
         // Current state
         this.currentTime = 0;
@@ -27,14 +27,14 @@ class ProjectileMotionSimulator {
         this.flightTime = 0;
         
         // Visual scaling
-        this.maxDisplayHeight = 15; // maximum height to display in meters
+        this.maxDisplayHeight = 500; // maximum height to display in meters
         this.pixelsPerMeter = 10; // will be calculated dynamically based on container height
         
         // Starting position offset from left edge
         this.startXOffset = 1; // meters from left edge
         
         // Horizontal display range
-        this.horizontalDisplayRange = 25; // meters to show across full width
+        this.horizontalDisplayRange = 1600; // meters to show across full width
         
         this.initializeElements();
         this.bindEvents();
@@ -67,6 +67,7 @@ class ProjectileMotionSimulator {
         this.velocityValue = document.getElementById('velocity-value');
         this.massValue = document.getElementById('mass-value');
         this.angleValue = document.getElementById('angle-value');
+        this.distanceValue = document.getElementById('distance-value');
         
         // Buttons
         this.startBtn = document.getElementById('start-simulation');
@@ -92,25 +93,7 @@ class ProjectileMotionSimulator {
         });
         
         this.angleSlider.addEventListener('input', (e) => {
-            let requestedAngle = parseFloat(e.target.value);
-            
-            // Restrict to allowed ranges: 0-25° and 65-75°
-            if (requestedAngle > 25 && requestedAngle < 65) {
-                // Snap to closest allowed value for forbidden middle range
-                if (requestedAngle <= 45) {
-                    requestedAngle = 25; // Snap to upper bound of first range
-                } else {
-                    requestedAngle = 65; // Snap to lower bound of second range
-                }
-                // Update the slider position to reflect the snapped value
-                e.target.value = requestedAngle;
-            } else if (requestedAngle > 75) {
-                // Cap at maximum allowed angle
-                requestedAngle = 75;
-                e.target.value = requestedAngle;
-            }
-            
-            this.launchAngle = requestedAngle;
+            this.launchAngle = parseFloat(e.target.value);
             this.angleValue.textContent = this.launchAngle.toFixed(0) + '°';
             this.calculateMaxHeight();
             this.updateDisplay();
@@ -183,8 +166,9 @@ class ProjectileMotionSimulator {
             this.pixelsPerMeter = 20; // 20 pixels per meter as fallback
         }
         
-        // Ensure minimum scaling
-        this.pixelsPerMeter = Math.max(this.pixelsPerMeter, 5);
+        // Remove the minimum scaling constraint to allow very small pixels per meter
+        // for large display ranges like 500m
+        this.pixelsPerMeter = Math.max(this.pixelsPerMeter, 0.5);
     }
 
     generateHeightTicks() {
@@ -203,8 +187,8 @@ class ProjectileMotionSimulator {
         leftScale.innerHTML = '';
         rightScale.innerHTML = '';
         
-        // Generate ticks every 1 meter (from 0 at ground up to maxDisplayHeight)
-        for (let height = 0; height <= this.maxDisplayHeight; height += 1) {
+        // Generate ticks every 50 meters (from 0 at ground up to maxDisplayHeight)
+        for (let height = 0; height <= this.maxDisplayHeight; height += 50) {
             const leftTick = this.createHeightTick(height, 'left');
             const rightTick = this.createHeightTick(height, 'right');
             
@@ -217,7 +201,7 @@ class ProjectileMotionSimulator {
         const tick = document.createElement('div');
         tick.className = 'height-tick';
         
-        // Only add label if it's not the maximum height (20m)
+        // Only add label if it's not the maximum height (500m)
         if (height < this.maxDisplayHeight) {
             const label = document.createElement('span');
             label.className = 'height-label';
@@ -251,8 +235,8 @@ class ProjectileMotionSimulator {
         // Calculate how many meters to show across the full width
         const areaWidth = this.simulationArea.clientWidth;
         
-        // Generate ticks every 1 meter, starting from the launch position as 0m
-        for (let distance = 0; distance <= this.horizontalDisplayRange; distance += 1) {
+        // Generate ticks every 100 meters, starting from the launch position as 0m
+        for (let distance = 0; distance <= this.horizontalDisplayRange; distance += 100) {
             const tick = this.createXTick(distance, areaWidth, this.horizontalDisplayRange);
             xAxisScale.appendChild(tick);
         }
@@ -264,7 +248,7 @@ class ProjectileMotionSimulator {
         const tick = document.createElement('div');
         tick.className = 'x-tick';
         
-        // Only add label if it's not the maximum distance (25m)
+        // Only add label if it's not the maximum distance (1600m)
         if (distance < this.horizontalDisplayRange) {
             const label = document.createElement('span');
             label.className = 'x-tick-label';
@@ -470,11 +454,19 @@ class ProjectileMotionSimulator {
             this.createBall();
         }
         
+        // Reset distance display
+        if (this.distanceValue) {
+            this.distanceValue.textContent = '0.0 m';
+        }
+        
         this.updateDisplay();
     }
     
     updateDisplay() {
-        // Display updates can be added here if needed
+        // Update distance display during simulation
+        if (this.distanceValue) {
+            this.distanceValue.textContent = this.currentX.toFixed(1) + ' m';
+        }
     }
     
     resizeCanvas() {
