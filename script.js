@@ -30,13 +30,12 @@ class ProjectileMotionSimulator {
         this.initializeElements();
         this.bindEvents();
         this.calculateScaling();
+        
+        // Now that scaling is calculated, position podium and ball correctly
+        this.updatePodium();
+        this.createBall();
+        
         this.updateDisplay();
-        this.generateHeightTicks();
-
-        // If ended at podium, ensure resting position visually matches podium top
-        if (!this.isRunning) {
-            this.positionBall(this.initialHeight, false);
-        }
         this.generateHeightTicks();
     }
     
@@ -105,10 +104,8 @@ class ProjectileMotionSimulator {
             }
         });
         
-        // Initialize podium and ball
+        // Initialize podium and ball (will be positioned after scaling is calculated)
         this.createPodium();
-        this.updatePodium();
-        this.createBall();
         this.currentHeight = this.initialHeight;
     }
     
