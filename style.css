@@ -319,3 +319,36 @@ header h1 {
     width: 80px;
     z-index: 5;
 }
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 30px 20px;
+    margin-top: 40px;
+}
+
+.fleeb-link {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.fleeb-text {
+    color: #ff8c42;
+    font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-decoration: none;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.fleeb-text:hover {
+    color: #ff7a28;
+    text-shadow: 2px 2px 8px rgba(255, 140, 66, 0.5);
+    transform: scale(1.05);
+}
